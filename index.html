@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jean</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        #launch-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: radial-gradient(circle, #1a0000 0%, #000 100%);
+            transition: opacity 0.5s ease;
+        }
+
+        #launch-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #launch-button {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #ff0000, #8b0000);
+            border: 4px solid #ff0000;
+            box-shadow: 
+                0 0 40px #ff0000,
+                0 0 80px #ff0000,
+                inset 0 0 40px rgba(255, 0, 0, 0.3);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 
+                    0 0 40px #ff0000,
+                    0 0 80px #ff0000,
+                    inset 0 0 40px rgba(255, 0, 0, 0.3);
+            }
+            50% {
+                box-shadow: 
+                    0 0 60px #ff0000,
+                    0 0 120px #ff0000,
+                    inset 0 0 60px rgba(255, 0, 0, 0.5);
+            }
+        }
+
+        #launch-button:hover {
+            transform: scale(1.1);
+            box-shadow: 
+                0 0 60px #ff0000,
+                0 0 120px #ff0000,
+                0 0 160px rgba(255, 0, 0, 0.5),
+                inset 0 0 60px rgba(255, 0, 0, 0.5);
+        }
+
+        #launch-button:active {
+            transform: scale(0.95);
+        }
+
+        #terminal-screen {
+            display: none;
+            height: 100vh;
+            background: #000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #terminal-screen.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        #terminal-output {
+            color: #0f0;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        .terminal-line {
+            margin: 2px 0;
+        }
+
+        .error {
+            color: #ff0000;
+            text-shadow: 0 0 5px #ff0000;
+        }
+
+        .warning {
+            color: #ffff00;
+            text-shadow: 0 0 5px #ffff00;
+        }
+
+        .prompt {
+            color: #00ffff;
+            text-shadow: 0 0 5px #00ffff;
+        }
+
+        #cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: #0f0;
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                transparent 50%,
+                rgba(0, 255, 0, 0.02) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="launch-screen">
+        <button id="launch-button">LAUNCH</button>
+    </div>
+
+    <div id="terminal-screen">
+        <div id="terminal-output"></div>
+        <div class="scanline"></div>
+    </div>
+
+    <script>
+        const launchButton = document.getElementById('launch-button');
+        const launchScreen = document.getElementById('launch-screen');
+        const terminalScreen = document.getElementById('terminal-screen');
+        const terminalOutput = document.getElementById('terminal-output');
+
+        // Audio context for sound generation
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Sound generation functions
+        function playButtonSound() {
+            const now = audioContext.currentTime;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(150, now);
+            oscillator.frequency.exponentialRampToValueAtTime(50, now + 0.3);
+            
+            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            
+            oscillator.start(now);
+            oscillator.stop(now + 0.3);
+        }
+
+        function playBootUpSequenceSound() {
+            const now = audioContext.currentTime;
+            
+            // Initial power surge
+            const surge = audioContext.createOscillator();
+            const surgeGain = audioContext.createGain();
+            surge.connect(surgeGain);
+            surgeGain.connect(audioContext.destination);
+            surge.frequency.setValueAtTime(80, now);
+            surge.frequency.exponentialRampToValueAtTime(120, now + 0.5);
+            surgeGain.gain.setValueAtTime(0.2, now);
+            surgeGain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+            surge.start(now);
+            surge.stop(now + 0.5);
+            
+            // Electrical hum
+            const hum = audioContext.createOscillator();
+            const humGain = audioContext.createGain();
+            hum.connect(humGain);
+            humGain.connect(audioContext.destination);
+            hum.frequency.setValueAtTime(60, now + 0.3);
+            humGain.gain.setValueAtTime(0.08, now + 0.3);
+            humGain.gain.setValueAtTime(0.08, now + 1.5);
+            humGain.gain.exponentialRampToValueAtTime(0.01, now + 2.5);
+            hum.start(now + 0.3);
+            hum.stop(now + 2.5);
+            
+            // Series of initialization beeps
+            const beepTimes = [0.6, 0.8, 1.0, 1.3];
+            beepTimes.forEach((time, index) => {
+                const beep = audioContext.createOscillator();
+                const beepGain = audioContext.createGain();
+                beep.connect(beepGain);
+                beepGain.connect(audioContext.destination);
+                beep.frequency.setValueAtTime(800 + (index * 100), now + time);
+                beepGain.gain.setValueAtTime(0.1, now + time);
+                beepGain.gain.exponentialRampToValueAtTime(0.01, now + time + 0.1);
+                beep.start(now + time);
+                beep.stop(now + time + 0.1);
+            });
+            
+            // Final confirmation tone
+            const confirm = audioContext.createOscillator();
+            const confirmGain = audioContext.createGain();
+            confirm.connect(confirmGain);
+            confirmGain.connect(audioContext.destination);
+            confirm.frequency.setValueAtTime(1000, now + 1.8);
+            confirm.frequency.setValueAtTime(1200, now + 1.9);
+            confirmGain.gain.setValueAtTime(0.12, now + 1.8);
+            confirmGain.gain.exponentialRampToValueAtTime(0.01, now + 2.1);
+            confirm.start(now + 1.8);
+            confirm.stop(now + 2.1);
+        }
+
+        function playSubtleBeep(type = 'normal') {
+            const now = audioContext.currentTime;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Different sounds for different line types
+            if (type === 'ok') {
+                oscillator.frequency.setValueAtTime(600, now);
+                gainNode.gain.setValueAtTime(0.03, now);
+            } else if (type === 'error') {
+                oscillator.frequency.setValueAtTime(200, now);
+                oscillator.frequency.exponentialRampToValueAtTime(150, now + 0.15);
+                gainNode.gain.setValueAtTime(0.05, now);
+            } else if (type === 'warning') {
+                oscillator.frequency.setValueAtTime(400, now);
+                oscillator.frequency.setValueAtTime(450, now + 0.05);
+                gainNode.gain.setValueAtTime(0.04, now);
+            } else if (type === 'system') {
+                oscillator.frequency.setValueAtTime(500, now);
+                gainNode.gain.setValueAtTime(0.03, now);
+            } else {
+                oscillator.frequency.setValueAtTime(450, now);
+                gainNode.gain.setValueAtTime(0.02, now);
+            }
+            
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            
+            oscillator.start(now);
+            oscillator.stop(now + 0.08);
+        }
+
+        function playProcessingSound() {
+            const now = audioContext.currentTime;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            oscillator.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(100, now);
+            oscillator.frequency.exponentialRampToValueAtTime(150, now + 0.3);
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(500, now);
+            
+            gainNode.gain.setValueAtTime(0.02, now);
+            gainNode.gain.setValueAtTime(0.02, now + 0.25);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            
+            oscillator.start(now);
+            oscillator.stop(now + 0.3);
+        }
+
+        function playKeySound() {
+            const now = audioContext.currentTime;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            oscillator.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Random pitch variation for more realistic typing
+            const baseFreq = 800 + Math.random() * 200;
+            oscillator.frequency.setValueAtTime(baseFreq, now);
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(2000, now);
+            
+            gainNode.gain.setValueAtTime(0.05, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            
+            oscillator.start(now);
+            oscillator.stop(now + 0.05);
+        }
+
+        function playEnterSound() {
+            const now = audioContext.currentTime;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(600, now);
+            oscillator.frequency.exponentialRampToValueAtTime(400, now + 0.08);
+            
+            gainNode.gain.setValueAtTime(0.08, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            
+            oscillator.start(now);
+            oscillator.stop(now + 0.08);
+        }
+
+        const bootSequence = [
+            { text: '[SYSTEM] Initializing launch sequence...', delay: 500, class: 'prompt' },
+            { text: '[OK] Boot loader initialized', delay: 300 },
+            { text: '[OK] Memory check passed', delay: 400 },
+            { text: '[OK] System integrity verified', delay: 300 },
+            { text: '', delay: 200 },
+            { text: '[WARNING] Handsome & funny user detected', delay: 600, class: 'warning' },
+            { text: '[SYSTEM] Running security protocols...', delay: 500, class: 'prompt' },
+            { text: '[OK] Facecard Security override accepted', delay: 700 },
+            { text: '', delay: 200 },
+            { text: '[SYSTEM] Loading core modules...', delay: 400, class: 'prompt' },
+            { text: '  > fortnite_hacks.sys ................... [OK]', delay: 300 },
+            { text: '  > memecoin_miner.dll ................ [OK]', delay: 300 },
+            { text: '  > escape_matrix.bin ................. [OK]', delay: 300 },
+            { text: '  > reality_engine.exe .............. [OK]', delay: 300 },
+            { text: '', delay: 200 },
+            { text: '[ERROR] Critical anomaly detected in sector 7', delay: 600, class: 'error' },
+            { text: '[SYSTEM] Attempting recovery...', delay: 800, class: 'prompt' },
+            { text: '[OK] Recovery successful', delay: 500 },
+            { text: '', delay: 300 },
+            { text: '[SYSTEM] All systems operational', delay: 500, class: 'prompt' },
+            { text: '[SYSTEM] Ready for user input', delay: 400, class: 'prompt' },
+            { text: '', delay: 200 },
+            { text: 'root@mainframe:~$ ', delay: 0, class: 'prompt', noBr: true }
+        ];
+
+        async function typeText(text, className = '', noBr = false) {
+            return new Promise(resolve => {
+                const line = document.createElement('div');
+                if (!noBr) {
+                    line.className = `terminal-line ${className}`;
+                } else {
+                    line.className = className;
+                    line.style.display = 'inline';
+                }
+                terminalOutput.appendChild(line);
+
+                // Play sound based on line type (only at start of line)
+                if (text.length > 0) {
+                    if (className.includes('error')) {
+                        playSubtleBeep('error');
+                    } else if (className.includes('warning')) {
+                        playSubtleBeep('warning');
+                    } else if (className.includes('prompt')) {
+                        playSubtleBeep('system');
+                    } else if (text.includes('[OK]')) {
+                        playSubtleBeep('ok');
+                    } else if (text.includes('>') && text.includes('[OK]')) {
+                        // Module loading - subtle processing sound
+                        setTimeout(() => playProcessingSound(), 50);
+                    }
+                }
+
+                let i = 0;
+                const interval = setInterval(() => {
+                    if (i < text.length) {
+                        line.textContent += text[i];
+                        i++;
+                    } else {
+                        clearInterval(interval);
+                        if (!noBr) {
+                            terminalOutput.appendChild(document.createElement('br'));
+                        }
+                        resolve();
+                    }
+                }, 20);
+            });
+        }
+
+        const commands = {
+            help: {
+                output: [
+                    'Available commands:',
+                    '',
+                    '  help   - Display this help message',
+                    '  links  - Show available links',
+                    '  clear  - Clear the terminal screen',
+                    ''
+                ]
+            },
+            links: {
+                output: [
+                    'Available links:',
+                    '',
+                    '  [1] GitHub        - https://github.com/JeanTheMan2',
+                    ''
+                ]
+            },
+            contact: {
+                output: [
+                    'Contact Information:',
+                    '',
+                    '  Email: jean@jean2.com'
+                ]
+            },
+            clear: {
+                action: 'clear'
+            }
+        };
+
+        let commandHistory = [];
+        let historyIndex = -1;
+
+        async function runBootSequence() {
+            for (const line of bootSequence) {
+                await new Promise(resolve => setTimeout(resolve, line.delay));
+                await typeText(line.text, line.class || '', line.noBr || false);
+            }
+            
+            // Enable input after boot sequence
+            enableInput();
+        }
+
+        function enableInput() {
+            // Remove any existing cursor
+            const existingCursor = document.getElementById('cursor');
+            if (existingCursor) {
+                existingCursor.remove();
+            }
+
+            // Create input line
+            const inputLine = document.createElement('div');
+            inputLine.style.display = 'inline';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.id = 'command-input';
+            input.style.cssText = `
+                background: transparent;
+                border: none;
+                outline: none;
+                color: #0f0;
+                font-family: 'Courier New', monospace;
+                font-size: 14px;
+                text-shadow: 0 0 5px #0f0;
+                width: 500px;
+                caret-color: #0f0;
+            `;
+            
+            inputLine.appendChild(input);
+            terminalOutput.appendChild(inputLine);
+            input.focus();
+
+            input.addEventListener('keydown', handleCommand);
+            input.addEventListener('keypress', (e) => {
+                // Play key sound for regular typing (not for special keys)
+                if (e.key.length === 1) {
+                    playKeySound();
+                }
+            });
+            
+            // Refocus input when clicking anywhere on terminal
+            terminalScreen.addEventListener('click', () => input.focus());
+        }
+
+        async function handleCommand(e) {
+            if (e.key === 'Enter') {
+                playEnterSound();
+                
+                const input = e.target;
+                const command = input.value.trim().toLowerCase();
+                
+                // Add command to history
+                if (command) {
+                    commandHistory.push(command);
+                    historyIndex = commandHistory.length;
+                }
+
+                // Display the entered command
+                const commandLine = document.createElement('div');
+                commandLine.className = 'terminal-line';
+                commandLine.innerHTML = `<span class="prompt">root@mainframe:~$</span> ${input.value}`;
+                
+                // Remove input line
+                input.parentElement.remove();
+                terminalOutput.appendChild(commandLine);
+
+                // Process command
+                if (command === '') {
+                    // Just show new prompt
+                } else if (command === 'clear') {
+                    terminalOutput.innerHTML = '';
+                } else if (commands[command]) {
+                    // Display command output
+                    const cmd = commands[command];
+                    if (cmd.output) {
+                        for (const line of cmd.output) {
+                            const outputLine = document.createElement('div');
+                            outputLine.className = 'terminal-line';
+                            outputLine.textContent = line;
+                            terminalOutput.appendChild(outputLine);
+                        }
+                    }
+                } else {
+                    // Unknown command
+                    const errorLine = document.createElement('div');
+                    errorLine.className = 'terminal-line error';
+                    errorLine.textContent = `Command not found: ${command}. Type 'help' for available commands.`;
+                    terminalOutput.appendChild(errorLine);
+                }
+
+                // Add new prompt and input
+                const newPrompt = document.createElement('div');
+                newPrompt.className = 'terminal-line prompt';
+                newPrompt.style.display = 'inline';
+                newPrompt.textContent = 'root@mainframe:~$ ';
+                terminalOutput.appendChild(newPrompt);
+                
+                enableInput();
+                
+                // Auto-scroll to bottom
+                terminalScreen.scrollTop = terminalScreen.scrollHeight;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    e.target.value = commandHistory[historyIndex];
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    e.target.value = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    e.target.value = '';
+                }
+            }
+        }
+
+        launchButton.addEventListener('click', () => {
+            // Play button sound
+            playButtonSound();
+            
+            // Hide launch screen
+            launchScreen.classList.add('hidden');
+            
+            // Show terminal after transition
+            setTimeout(() => {
+                launchScreen.style.display = 'none';
+                terminalScreen.classList.add('active');
+                
+                // Play boot-up sequence sound
+                playBootUpSequenceSound();
+                
+                runBootSequence();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
