@@ -351,6 +351,21 @@
             oscillator.stop(now + 0.08);
         }
 
+        function calculateAge(birthDate) {
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+        
+            const monthDiff = today.getMonth() - birthDate.getMonth();
+            const dayDiff = today.getDate() - birthDate.getDate();
+        
+            if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                age--;
+            }
+        
+            return age;
+        }
+
+
         const bootSequence = [
             { text: '[SYSTEM] Initializing launch sequence...', delay: 500, class: 'prompt' },
             { text: '[OK] Boot loader initialized', delay: 300 },
@@ -426,9 +441,14 @@
                     'Available commands:',
                     '',
                     '  help   - Display this help message',
-                    '  links  - Show available links',
+                    '  about  - A little bit about me',
                     '  contact  - Display contact info',
+                    '  projects  - Display showcased projects',
+                    '  languages  - Shows known (non-human) languages',
+                    '  frameworks  - Shows used frameworks I have used previously',
                     '  clear  - Clear the terminal screen',
+                    '  links  - Show available links',
+                    '  secret  - Show <REDACTED>',
                     ''
                 ]
             },
@@ -437,6 +457,7 @@
                     'Available links:',
                     '',
                     '  [1] GitHub        - https://github.com/JeanTheMan2',
+                    '  [2] LinkedIn        - https://www.linkedin.com/in/jean-elias-suster-bardini-627b7327b',
                     ''
                 ]
             },
@@ -449,7 +470,66 @@
             },
             clear: {
                 action: 'clear'
+            },
+            languages: {
+                output: [
+                    'Here are the programming languages I use:',
+                    '',
+                    'C++ (Arduino)',
+                    'Java',
+                    'JavaScript',
+                    'Lua',
+                    'Python',
+                    'Unity C#'
+                ]
+            },
+            frameworks: {
+                output: [
+                    'These are frameworks I have used:',
+                    '',
+                    'Android SDK',
+                    'Discord.js',
+                    'Electron.js',
+                    'Flask',
+                    'LuaU',
+                    'Java Spring Boot',
+                    'Node.js',
+                    'OpenCV',
+                    'PyGame',
+                    'Tesseract'
+                ]
+            },
+            about: {
+                output: [
+                    'About Jean:',
+                    '',
+                    'Name: Jean',
+                    `Age: ${calculateAge(new Date(2008, 6, 5))}`,
+                    'Languages (Human): English (Native), Portuguese BR (Fluent), Spanish VE (Conversational)',
+                    'Interests: Computing, bit of electronics, games, food',
+                    'Favorite Games: CS:GO 2, GTA V, Tomb Raider Series, Uncharted Series, Minecraft',
+                    'Status: Currently studying A-Level CS, Maths and Physics'
+                ]
+            },
+            projects: {
+                output: [
+                    'Here are a few of my projects:',
+                    '',
+                    'Title: Graphl',
+                    'Description: Fully featured A* Algorithm teaching tool simulator, where I implemented a variation of the Smith-Waterman algorithm to make accurate weighted graphs, complete with trace table, adjacency list and adjacency matrix visualisation to accompany the animated graph simulation built on a custom OOP wrapper for the javascript canvas.',
+                    'Technologies: JS, CSS, HTML',
+                    'Link: Computing, bit of electronics, games, food'
+                ]
+            },
+            secret: {
+                output: [
+                    '',
+                    'Here is my secret website were all the good stuff is (shh dont tell anyone)',
+                    '-> https://www.galacticapricot.dev'
+                ]
             }
+            
+            
         };
 
         let commandHistory = [];
