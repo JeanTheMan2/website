@@ -622,7 +622,19 @@
                         for (const line of cmd.output) {
                             const outputLine = document.createElement('div');
                             outputLine.className = 'terminal-line';
-                            outputLine.textContent = line;
+                            
+                            // Check if line contains a URL and make it clickable
+                            const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+                            if (urlMatch) {
+                                const url = urlMatch[1];
+                                const beforeUrl = line.substring(0, line.indexOf(url));
+                                const afterUrl = line.substring(line.indexOf(url) + url.length);
+                                
+                                outputLine.innerHTML = beforeUrl + `<a href="${url}" target="_blank" style="color: #00ffff; text-decoration: underline; text-shadow: 0 0 5px #00ffff;">${url}</a>` + afterUrl;
+                            } else {
+                                outputLine.textContent = line;
+                            }
+                            
                             terminalOutput.appendChild(outputLine);
                         }
                     }
