@@ -419,7 +419,6 @@
                         setTimeout(() => playProcessingSound(), 50);
                     }
                 }
-
                 let i = 0;
                 const interval = setInterval(() => {
                     if (i < text.length) {
@@ -429,6 +428,7 @@
                         clearInterval(interval);
                         if (!noBr) {
                             terminalOutput.appendChild(document.createElement('br'));
+                            terminalScreen.scrollTop = terminalScreen.scrollHeight;
                         }
                         resolve();
                     }
@@ -458,7 +458,7 @@
                     'Available links:',
                     '',
                     '  [1] GitHub        - https://github.com/JeanTheMan2',
-                    '  [2] LinkedIn        - https://www.linkedin.com/in/jean-elias-suster-bardini-627b7327b',
+                    '  [2] LinkedIn        - https://www.linkedin.com/in/in5',
                     ''
                 ]
             },
